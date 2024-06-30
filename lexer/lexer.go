@@ -1,14 +1,18 @@
 package lexer
 
 import (
+	"strings"
+
 	token "ljos.app/interpreter/token"
 )
 
 type Lexer struct {
-	input        string
-	position     int // current position in input (points to current char)
-	readPosition int // current reading position in input (after current char)
-	ch           byte
+	input          string
+	position       int // current position in input (points to current char)
+	readPosition   int // current reading position in input (after current char)
+	lines          []string
+	CurrentLineIdx int // current line, used for errors
+	ch             byte
 }
 type TokenLambda func() token.Token
 
@@ -23,7 +27,8 @@ func isLetter(ch byte) bool {
 }
 
 func isWhiteSpace(ch byte) bool {
-	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+	isWhiteSpace := ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+	return isWhiteSpace
 }
 
 func isNumber(ch byte) bool {
@@ -32,6 +37,9 @@ func isNumber(ch byte) bool {
 
 func New(input string) *Lexer {
 	l := &Lexer{input: input}
+	lines := strings.Split(input, "\n")
+	l.lines = lines
+	l.CurrentLineIdx = 0
 	l.readChar()
 	return l
 }
@@ -102,6 +110,17 @@ func (l *Lexer) readChar() {
 	l.readPosition += 1
 }
 
+func (l *Lexer) GetCurrentLines() []string {
+	lines := make([]string, 3)
+	lines[1] = l.lines[l.CurrentLineIdx] + "       // <-------"
+	if l.CurrentLineIdx > 0 {
+		lines[0] = l.lines[l.CurrentLineIdx-1]
+	}
+	if l.CurrentLineIdx+1 < len(l.lines) {
+		lines[2] = l.lines[l.CurrentLineIdx+1]
+	}
+	return lines
+}
 func (l *Lexer) NextToken() token.Token {
 
 	var tok token.Token
@@ -168,7 +187,13 @@ func (l *Lexer) readIdentifier() string {
 
 func (l *Lexer) skipWhiteSpace() {
 	for isWhiteSpace(l.ch) {
+		l.incrementLinePos()
 		l.readChar()
+	}
+}
+func (l *Lexer) incrementLinePos() {
+	if l.ch == '\n' || l.ch == '\r' {
+		l.CurrentLineIdx += 1
 	}
 }
 
