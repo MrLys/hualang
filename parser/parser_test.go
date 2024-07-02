@@ -7,6 +7,33 @@ import (
 	"ljos.app/interpreter/lexer"
 )
 
+func TestReturnStatements(t *testing.T) {
+	input := `
+  return 5;
+  return 10;
+  return 730246;
+  `
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+	if len(program.Statements) != 3 {
+		t.Fatalf("program.Statements does not contain exactly 3 statements, got %d", len(program.Statements))
+		return
+	}
+	for i, stmt := range program.Statements {
+		returnStmt, ok := stmt.(*ast.ReturnStatement)
+		if !ok {
+			t.Errorf("stmt not *ast.ReturnStatement(%d). got %T", i, stmt)
+		}
+		if returnStmt.TokenLiteral() != "return" {
+			t.Errorf("returnStmt.TokenLiteral not 'return', got %q",
+				returnStmt.TokenLiteral())
+		}
+
+	}
+
+}
 func TestLetStatements(t *testing.T) {
 	input := `
   let x = 5;
@@ -77,4 +104,28 @@ func checkParseErrors(t *testing.T, p *Parser) {
 		t.Errorf("\n%s", msg.Lines)
 	}
 	t.FailNow()
+}
+
+func TestIdentifiers(t *testing.T) {
+	input := "foobar;"
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program should contain 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.Expression, got %T", program.Statements[0])
+	}
+	ident, ok := stmt.Expression.(*ast.Identifier)
+	if !ok {
+		t.Fatalf("stmt is not *ast.Identifier, got %T", stmt)
+	}
+	if ident.Value != "foobar" {
+		t.Fatalf("stmt.TokenLiteral() should be 'foobar', got %q", stmt.TokenLiteral())
+	}
+
 }
